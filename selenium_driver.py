@@ -2,7 +2,7 @@ import sys
 from constants import Constants
 from selenium import webdriver
 
-class SeleniumDriver():
+class SeleniumDriver:
     def __init__(self):
         platform = sys.platform
         if platform.lower()[:3] == "win":
@@ -20,4 +20,10 @@ class SeleniumDriver():
             return webdriver.Firefox(constants.driver_path[constants.platform_type_MAC])
         elif self.platform == constants.platform_type_WINDOWS:
             return webdriver.Firefox(constants.driver_path[constants.platform_type_WINDOWS])
-        elif self.platform == constants.platform_type_LINUX
+        elif self.platform == constants.platform_type_LINUX:
+            return webdriver.Firefox(constants.driver_path[constants.platform_type_LINUX])
+
+
+if __name__ == "__main__":
+    D = SeleniumDriver()
+    print(D.platform)
