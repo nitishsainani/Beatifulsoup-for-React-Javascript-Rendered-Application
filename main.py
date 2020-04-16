@@ -1,9 +1,9 @@
 import requests
 import time
 from bs4 import BeautifulSoup
-from selenium import webdriver
+from selenium_driver import SeleniumDriver
 
-driver = webdriver.Firefox(executable_path=r"/Users/nitish/Documents/executables/geckodriver")
+driver = SeleniumDriver().get_driver()
 
 driver.get("https://www.roofstock.com/investment-property-marketplace")
 time.sleep(5)
