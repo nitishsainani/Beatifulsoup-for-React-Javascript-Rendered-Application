@@ -13,6 +13,7 @@ class Scrapper:
         self.url = url
         self.export_path_json = os.path.join("outputs", name, "json", "json_output.json")
         self.export_path_csv = os.path.join("outputs", name, "csv", "csv_output.csv")
+        self.make_dirs(name)
 
     @staticmethod
     def make_dirs(name):
