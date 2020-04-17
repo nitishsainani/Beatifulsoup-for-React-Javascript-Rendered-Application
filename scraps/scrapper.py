@@ -65,7 +65,7 @@ class Scrapper:
         try:
             if not data:
                 return
-            file = open(self.export_path_csv, "w+", encoding='utf-8')
+            file = open(self.export_path_csv, "w+", encoding='utf-8', newline='')
             csv_writer = csv.writer(file)
             fields = data[0].keys()
             csv_writer.writerow(fields)
