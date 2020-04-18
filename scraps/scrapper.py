@@ -7,13 +7,14 @@ import csv
 
 
 class Scrapper:
-    def __init__(self, url, name):
+    def __init__(self, name):
         self.driver = SeleniumDriver().get_driver()
-        self.soup = None
-        self.url = url
         self.export_path_json = os.path.join("outputs", name, "json", "json_output.json")
         self.export_path_csv = os.path.join("outputs", name, "csv", "csv_output.csv")
         self.make_dirs(name)
+
+    def get_existing_driver(self):
+        return self.driver
 
     @staticmethod
     def make_dirs(name):
@@ -34,24 +35,18 @@ class Scrapper:
         except FileExistsError:
             pass
 
-    def initialize(self):
-        self.soup = self.get_page_soup(self.url)
-
-    def get_page_soup(self, url):
+    def get_page_soup(self, url, css_selector=None):
         self.driver.get(url)
-        time.sleep(5)
+        self.driver.implicitly_wait(20)
+        if css_selector is not None:
+            self.driver.find_element_by_css_selector(css_selector)
+        else:
+            time.sleep(5)
         page_source = self.driver.page_source
         return BeautifulSoup(page_source, "lxml")
 
     def wait_until_element_loads(self):
         pass
-
-    def find_all_tag_matches_by_class(self, tag="div", class_name=""):
-        matches = self.soup.findAll(
-            tag,
-            {"class": class_name}
-        )
-        return matches
 
     @staticmethod
     def find_all_tag_matches_by_attribute_from_soup(soup, tag="div", attribute="class", attribute_value=""):
@@ -78,7 +73,6 @@ class Scrapper:
         finally:
             if file is not None:
                 file.close()
-
 
     def export_to_json(self, data=None):
         file = None
