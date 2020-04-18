@@ -13,6 +13,9 @@ class Scrapper:
         self.export_path_csv = os.path.join("outputs", name, "csv", "csv_output.csv")
         self.make_dirs(name)
 
+    def __del__(self):
+        self.driver.close()
+
     def get_existing_driver(self):
         return self.driver
 
