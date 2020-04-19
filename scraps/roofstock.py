@@ -45,7 +45,7 @@ class RoofStock:
 
         self.scrapper_object.export_to_json(self.properties_data_json)
         self.scrapper_object.export_to_csv(self.properties_data_json)
-        print("Scrapper ran successfully, Outputs in folder:",
+        print("\r\n\n...............................\nScrapper ran successfully, Outputs in folder:",
               os.path.join(os.path.abspath(os.getcwd()), "outputs", self.name), sep='\n')
 
     def get_properties_soup_from_listing_page(self):
@@ -245,8 +245,6 @@ class RoofStock:
 
     def get_additional_info_from_property_page(self, listing):
         property_page_link = "https://www.roofstock.com" + listing.find("a").attrs['href']
-        print(property_page_link)
-
         return self.get_items_set_from_property_page(property_page_link)
 
     def get_items_set_from_property_page(self, property_page_link):
@@ -399,5 +397,5 @@ class RoofStock:
 
     @staticmethod
     def extract_int_from_price(str_price: str) -> int:
-        str_price = str_price.replace('$', '').replace(',', '')
+        str_price = str_price.replace('$', '').replace(',', '').replace('-', '')
         return int(str_price)

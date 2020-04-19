@@ -8,6 +8,8 @@ import csv
 
 class Scrapper:
     def __init__(self, name):
+        print("\n")
+        print("\rInitializing the Firefox driver...", end="")
         self.driver = SeleniumDriver().get_driver()
         self.export_path_json = os.path.join("outputs", name, "json", "json_output.json")
         self.export_path_csv = os.path.join("outputs", name, "csv", "csv_output.csv")
@@ -39,6 +41,7 @@ class Scrapper:
             pass
 
     def get_page_soup(self, url, css_selector=None):
+        print("\rOpening and Extracting the url:", url, end="")
         self.driver.get(url)
         self.driver.implicitly_wait(20)
         if css_selector is not None:
