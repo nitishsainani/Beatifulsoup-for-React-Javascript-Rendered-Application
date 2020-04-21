@@ -305,11 +305,6 @@ class RoofStock:
         return self.get_items_set_from_property_page(property_page_link)
 
     def get_items_set_from_property_page(self, property_page_link):
-
-        css_selector_for_page = "div.ListingMediaViewer__MediaBlockStyled-sc-16guiwa-7:nth-child(2) > div:nth-child(" \
-                                "1) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > div:nth-child(2) > " \
-                                "div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > " \
-                                "img:nth-child(1) "
         class_name_for_page = "slick-slide slick-active slick-current"
         class_name = "inline-block md NumberFormatWithStyle__NumberFormatStyled-sc-1yvv7lw-0 cGlbYB"
 
