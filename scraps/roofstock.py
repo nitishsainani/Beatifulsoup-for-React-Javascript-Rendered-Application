@@ -1,5 +1,6 @@
 from scraps.scrapper import Scrapper
 import os
+import time
 
 
 class RoofStock:
@@ -8,58 +9,114 @@ class RoofStock:
         self.name = "roofstock"
         self.scrapper_object = Scrapper(self.name)
         self.properties_data_json = []
+        self.__total_pages = None
+        self.__current_page = None
 
     def scrap_properties(self):
-        properties_soups = self.get_properties_soup_from_listing_page()
+        properties_soups = self.get_next_page_properties_soup()
+        while properties_soups is not None:
+            for listing in properties_soups:
+                image = self.get_property_image(listing)
+                address, city, state, zipcode = self.get_property_address_info(listing)
+                beds, bath = self.get_bed_bath(listing)
+                year_built = self.get_build_year(listing)
+                neighbourhood_rating = self.get_property_rating(listing)
+                sqft = self.get_property_space(listing)
+                open_house_price = self.get_property_value(listing)
+                remarks = self.get_property_remarks(listing)
+                is_duplex = self.is_duplex(listing)
 
-        for listing in properties_soups:
-            image = self.get_property_image(listing)
-            address, city, state, zipcode = self.get_property_address_info(listing)
-            beds, bath = self.get_bed_bath(listing)
-            year_built = self.get_build_year(listing)
-            neighbourhood_rating = self.get_property_rating(listing)
-            sqft = self.get_property_space(listing)
-            open_house_price = self.get_property_value(listing)
-            remarks = self.get_property_remarks(listing)
-            is_duplex = self.is_duplex(listing)
+                listing_json = {
+                    "address": address,
+                    "city": city,
+                    "state": state,
+                    "zipcode": zipcode,
+                    "property_image": image,
+                    "num-bedroom": beds,
+                    "num-bathroom": bath,
+                    "year-built": year_built,
+                    "open-house-price": open_house_price,
+                    "neighbourhood": neighbourhood_rating,
+                    "sqft": sqft,
+                    "property_remarks": remarks,
+                    "is_property_duplex": is_duplex
+                }
 
-            listing_json = {
-                "address": address,
-                "city": city,
-                "state": state,
-                "zipcode": zipcode,
-                "property_image": image,
-                "num-bedroom": beds,
-                "num-bathroom": bath,
-                "year-built": year_built,
-                "open-house-price": open_house_price,
-                "neighbourhood": neighbourhood_rating,
-                "sqft": sqft,
-                "property_remarks": remarks,
-                "is_property_duplex": is_duplex
-            }
+                listing_json.update(self.get_additional_info_from_property_page(listing))
 
-            listing_json.update(self.get_additional_info_from_property_page(listing))
-
-            self.properties_data_json.append(listing_json)
+                self.properties_data_json.append(listing_json)
+            properties_soups = self.get_next_page_properties_soup()
 
         self.scrapper_object.export_to_json(self.properties_data_json)
         self.scrapper_object.export_to_csv(self.properties_data_json)
         print("\r\n\n...............................\nScrapper ran successfully, Outputs in folder:",
               os.path.join(os.path.abspath(os.getcwd()), "outputs", self.name), sep='\n')
 
-    def get_properties_soup_from_listing_page(self):
+    def get_next_page_properties_soup(self):
         property_block_class = "MuiGrid-root fivecolumns CardViewstyle__GridCardStyled-sc-1wti8ll-6 cNLVyp " \
                                "MuiGrid-item MuiGrid-grid-xs-12 MuiGrid-grid-sm-6 MuiGrid-grid-md-4 " \
                                "MuiGrid-grid-lg-3"
         css_selector_for_page = "div.fivecolumns:nth-child(1) > div:nth-child(1) > a:nth-child(1) > div:nth-child(1)"
-        properties_soups = self.scrapper_object.get_page_soup(self.properties_listing_page, css_selector_for_page)
+
+        if self.__total_pages is None:
+            self.__current_page = 1
+            properties_page_soup = self.scrapper_object.get_page_soup(
+                self.properties_listing_page, css_selector_for_page)
+
+            self.__save_total_pages(properties_page_soup)
+        else:
+            self.__current_page += 1
+            if self.__current_page > self.__total_pages:
+                return None
+            properties_page_soup = self.get_soup_click_next_page(self.__current_page)
+
         properties_soups = self.scrapper_object.find_all_tag_matches_by_attribute_from_soup(
-            properties_soups,
+            properties_page_soup,
             attribute_value=property_block_class
         )
         properties_soups = self.__clear_banners_from_properties(properties_soups)
         return properties_soups
+
+    def get_soup_click_next_page(self, page_no):
+
+        next_page_css_selector = "#__next > div > div:nth-child(2) > div > " \
+                                 "div.original.Container__PaddedContainerStyled-sc-1kcn1bw-0.syoMg > div > " \
+                                 "div.Listings__PaginationContainer-e8eat8-0.kwcECe > ul > li:last-child "
+        driver = self.scrapper_object.get_existing_driver()
+
+        # Refresh the tab by closing and reopening to prevent hang
+        self.refresh_tab_1(driver)
+
+        driver.find_element_by_css_selector(next_page_css_selector).click()
+        self.__wait_for_page_change(driver, page_no=page_no)
+        return self.scrapper_object.get_soup_from_page_source(driver.page_source)
+
+    @staticmethod
+    def refresh_tab_1(driver):
+        driver.delete_all_cookies()
+        driver.switch_to_window(driver.window_handles[1])
+        driver.close()
+        driver.switch_to_window(driver.window_handles[0])
+        driver.execute_script("window.open('');")
+        driver.switch_to.window(driver.window_handles[0])
+
+    @staticmethod
+    def __wait_for_page_change(driver, page_no):
+        listing_number_to_check_xpath = '//*[@id="__next"]/div/div[2]/div/div[1]/div/div[2]/div/div[1]/div[1]/p'
+        while True:
+            time.sleep(0.5)
+            e = driver.find_element_by_xpath(listing_number_to_check_xpath)
+            if int(str(e.text).split()[1]) == (page_no-1)*25 + 1:
+                break
+
+    def __save_total_pages(self, page_soup):
+        class_name = "MuiTypography-root Pagination__TypographyStyled-wbid8b-1 lezUkm MuiTypography-caption"
+        items = self.scrapper_object.find_all_tag_matches_by_attribute_from_soup(
+            page_soup,
+            "span",
+            attribute_value=class_name
+        )
+        self.__total_pages = int(str(items[len(items)-1].contents[0]))
 
     def __clear_banners_from_properties(self, properties_soups):
         banner_block_class = "MuiTypography-root MuiLink-root MuiLink-underlineHover MuiTypography-colorPrimary"
@@ -140,10 +197,10 @@ class RoofStock:
         line_2_list = address_line_2.split()
         zipcode = line_2_list[-1]
         state = line_2_list[-2]
-        city = " ".join(map(str, line_2_list[:len(line_2_list)-2]))
+        city = " ".join(map(str, line_2_list[:len(line_2_list) - 2]))
 
         # Removing the comma from city
-        city = city[:len(city)-1]
+        city = city[:len(city) - 1]
 
         full_address = address_line_1 + ", " + address_line_2
 
@@ -253,9 +310,10 @@ class RoofStock:
                                 "1) > div:nth-child(1) > div:nth-child(1) > div:nth-child(1) > div:nth-child(2) > " \
                                 "div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > " \
                                 "img:nth-child(1) "
+        class_name_for_page = "slick-slide slick-active slick-current"
         class_name = "inline-block md NumberFormatWithStyle__NumberFormatStyled-sc-1yvv7lw-0 cGlbYB"
 
-        listing = self.scrapper_object.get_page_soup(property_page_link, css_selector_for_page)
+        listing = self.scrapper_object.get_page_soup(property_page_link, tab=1, wait_class_name=class_name_for_page)
 
         items = self.scrapper_object.find_all_tag_matches_by_attribute_from_soup(
             listing,
@@ -345,22 +403,32 @@ class RoofStock:
         return hoa, lease_end, lease_start, lot_size, occupancy
 
     def get_school_from_property_page(self, listing):
-        school_class = "Featurestyle__IconInfoSecondLineStyled-zhjho0-17 kKSOfU"
-        element = self.scrapper_object.find_all_tag_matches_by_attribute_from_soup(
-            soup=listing,
-            attribute_value=school_class
-        )
-        return str(element[1].contents[0])
+        try:
+            school_class = "Featurestyle__IconInfoSecondLineStyled-zhjho0-17 kKSOfU"
+            element = self.scrapper_object.find_all_tag_matches_by_attribute_from_soup(
+                soup=listing,
+                attribute_value=school_class
+            )
+            return str(element[1].contents[0])
+        except IndexError:
+            return ""
+        except Exception:
+            raise
 
     def get_flood_risk_from_property_page(self, listing):
-        flood_risk_style = "margin: 0px; color: rgb(118, 118, 118); display: block;"
-        element = self.scrapper_object.find_all_tag_matches_by_attribute_from_soup(
-            soup=listing,
-            tag="p",
-            attribute="style",
-            attribute_value=flood_risk_style
-        )
-        return str(element[0].contents[0].contents[0])
+        try:
+            flood_risk_style = "margin: 0px; color: rgb(118, 118, 118); display: block;"
+            element = self.scrapper_object.find_all_tag_matches_by_attribute_from_soup(
+                soup=listing,
+                tag="p",
+                attribute="style",
+                attribute_value=flood_risk_style
+            )
+            return str(element[0].contents[0].contents[0])
+        except IndexError:
+            return ""
+        except Exception:
+            raise
 
     def get_initial_investment_from_property_page(self, listing):
         initial_investment_class = "block xl NumberFormatWithStyle__NumberFormatStyled-sc-1yvv7lw-0 cGlbYB"
@@ -393,7 +461,7 @@ class RoofStock:
     @staticmethod
     def extract_float_from_percentage(str_per: str) -> float:
         str_per = str_per.replace('%', '')
-        return round(float(str_per)/10, 2)
+        return round(float(str_per) / 10, 2)
 
     @staticmethod
     def extract_int_from_price(str_price: str) -> int:

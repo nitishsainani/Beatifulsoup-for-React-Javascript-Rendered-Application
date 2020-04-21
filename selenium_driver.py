@@ -4,29 +4,33 @@ from selenium import webdriver
 import os
 
 
+def get_platform():
+    platform = sys.platform
+    is_64bits = sys.maxsize > 2 ** 32
+    constants = Constants()
+
+    if platform.lower()[:3] == "win":
+        if is_64bits:
+            return constants.platform_type_WIN_64
+        else:
+            return constants.platform_type_WIN_32
+
+    elif platform.lower()[:3] == "lin":
+        if is_64bits:
+            return constants.platform_type_LINUX_64
+        else:
+            return constants.platform_type_WIN_32
+
+    elif platform.lower() == "darwin":
+        return constants.platform_type_MAC
+
+    else:
+        raise Exception("Platform Not Supported!")
+
+
 class SeleniumDriver:
     def __init__(self):
-        platform = sys.platform
-        is_64bits = sys.maxsize > 2 ** 32
-        constants = Constants()
-
-        if platform.lower()[:3] == "win":
-            if is_64bits:
-                self.platform = constants.platform_type_WIN_64
-            else:
-                self.platform = constants.platform_type_WIN_32
-
-        elif platform.lower()[:3] == "lin":
-            if is_64bits:
-                self.platform = constants.platform_type_LINUX_64
-            else:
-                self.platform = constants.platform_type_WIN_32
-
-        elif platform.lower() == "darwin":
-            self.platform = constants.platform_type_MAC
-
-        else:
-            raise Exception("Platform Not Supported!")
+        self.platform = get_platform()
 
     def get_driver(self):
         constants = Constants()

@@ -11,12 +11,16 @@ class Scrapper:
         print("\n")
         print("\rInitializing the Firefox driver...", end="")
         self.driver = SeleniumDriver().get_driver()
+        self.driver.implicitly_wait(40)
         self.export_path_json = os.path.join("outputs", name, "json", "json_output.json")
         self.export_path_csv = os.path.join("outputs", name, "csv", "csv_output.csv")
         self.make_dirs(name)
+        self.driver.execute_script("window.open('');")
 
     def __del__(self):
-        self.driver.close()
+        while self.driver.window_handles:
+            self.driver.switch_to.window(self.driver.window_handles[0])
+            self.driver.close()
 
     def get_existing_driver(self):
         return self.driver
@@ -40,19 +44,24 @@ class Scrapper:
         except FileExistsError:
             pass
 
-    def get_page_soup(self, url, css_selector=None):
+    def get_page_soup(self, url, wait_css_selector=None, tab=0, wait_class_name=None):
         print("\rOpening and Extracting the url:", url, end="")
+        self.driver.switch_to.window(self.driver.window_handles[tab])
         self.driver.get(url)
-        self.driver.implicitly_wait(20)
-        if css_selector is not None:
-            self.driver.find_element_by_css_selector(css_selector)
+        if wait_css_selector is not None:
+            self.driver.find_element_by_css_selector(wait_css_selector)
+        elif wait_class_name is not None:
+            self.driver.find_element_by_class_name(".".join(map(str, wait_class_name.split())))
         else:
             time.sleep(5)
-        page_source = self.driver.page_source
-        return BeautifulSoup(page_source, "lxml")
+        return self.get_soup_from_page_source(self.driver.page_source)
 
     def wait_until_element_loads(self):
         pass
+
+    @staticmethod
+    def get_soup_from_page_source(page_source):
+        return BeautifulSoup(page_source, "lxml")
 
     @staticmethod
     def find_all_tag_matches_by_attribute_from_soup(soup, tag="div", attribute="class", attribute_value=""):
